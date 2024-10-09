@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Image Processing System Tester</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+
+<body class="bg-gray-100 min-h-screen py-12 px-4 sm:px-6 lg:px-8">
+    <div class="max-w-3xl mx-auto">
+        <h1 class="text-3xl font-bold text-center text-gray-900 mb-12">Image Processing System Tester</h1>
+
+        <div class="bg-white shadow-md rounded-lg p-6 mb-8">
+            <h2 class="text-xl font-semibold mb-4">Upload CSV</h2>
+            <div class="flex items-center">
+                <input type="file" id="csvFile" accept=".csv" class="hidden" onchange="updateFileName()">
+                <label for="csvFile"
+                    class="bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded cursor-pointer mr-4">
+                    Choose File
+                </label>
+                <span id="fileName" class="text-gray-600">No file chosen</span>
+            </div>
+            <button onclick="uploadCSV()"
+                class="mt-4 bg-green-500 hover:bg-green-600 text-white font-bold py-2 px-4 rounded">
+                Upload
+            </button>
+            <div id="uploadResult" class="mt-4 p-4 bg-gray-100 rounded-md"></div>
+        </div>
+
+        <div class="bg-white shadow-md rounded-lg p-6 mb-8">
+            <h2 class="text-xl font-semibold mb-4">Check Processing Status</h2>
+            <div class="flex items-center">
+                <input type="text" id="requestId" placeholder="Enter Request ID"
+                    class="flex-grow mr-4 p-2 border border-gray-300 rounded-md">
+                <button onclick="checkStatus()"
+                    class="bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded">
+                    Check Status
+                </button>
+            </div>
+            <div id="statusResult" class="mt-4 p-4 bg-gray-100 rounded-md"></div>
+        </div>
+
+        <div id="imageSection" class="bg-white shadow-md rounded-lg p-6 mb-8 hidden">
+            <h2 class="text-xl font-semibold mb-4">Processed Images</h2>
+            <div id="imageGallery" class="grid grid-cols-2 sm:grid-cols-3 gap-4"></div>
+        </div>
+    </div>
+
+    <script>
+        const API_BASE_URL = 'http://localhost:3000/api';
+
+        function updateFileName() {
+            const fileInput = document.getElementById('csvFile');
+            const fileName = document.getElementById('fileName');
+            fileName.textContent = fileInput.files[0] ? fileInput.files[0].name : 'No file chosen';
+        }
+
+        async function uploadCSV() {
+            const fileInput = document.getElementById('csvFile');
+            const file = fileInput.files[0];
+
+            if (!file) {
+                alert('Please select a CSV file');
+                return;
+            }
+
+            const formData = new FormData();
+            formData.append('csv', file);
+
+            try {
+                const response = await fetch(`${API_BASE_URL}/upload`, {
+                    method: 'POST',
+                    body: formData
+                });
+
+                const result = await response.json();
+                document.getElementById('uploadResult').innerText = JSON.stringify(result, null, 2);
+            } catch (error) {
+                console.error('Error:', error);
+                document.getElementById('uploadResult').innerText = 'Error: ' + error.message;
+            }
+        }
+
+        async function checkStatus() {
+            const requestId = document.getElementById('requestId').value;
+
+            if (!requestId) {
+                alert('Please enter a Request ID');
+                return;
+            }
+
+            try {
+                const response = await fetch(`${API_BASE_URL}/status/${requestId}`);
+                const result = await response.json();
+                document.getElementById('statusResult').innerText = JSON.stringify(result, null, 2);
+
+                if (result.status === 'COMPLETED') {
+                    await displayProcessedImages(result.processedImages);
+                } else {
+                    document.getElementById('imageSection').classList.add('hidden');
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                document.getElementById('statusResult').innerText = 'Error: ' + error.message;
+            }
+        }
+
+        function displayProcessedImages(images) {
+            const imageSection = document.getElementById('imageSection');
+            const gallery = document.getElementById('imageGallery');
+            gallery.innerHTML = '';
+
+            if (images && images.length > 0) {
+                imageSection.classList.remove('hidden');
+                images.forEach(imageUrl => {
+                    const fullImageUrl = imageUrl.startsWith('http') ? imageUrl : `http://localhost:3000${imageUrl}`;
+                    const img = document.createElement('img');
+                    img.src = fullImageUrl;
+                    img.alt = 'Processed Image';
+                    img.className = 'w-full h-48 object-cover rounded-md';
+                    gallery.appendChild(img);
+                });
+            } else {
+                imageSection.classList.add('hidden');
+            }
+        }
+    </script>
+</body>
+
+</html>
